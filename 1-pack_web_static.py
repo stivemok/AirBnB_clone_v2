@@ -12,7 +12,9 @@ def do_pack():
         local("mkdir -p versions")
         date = datetime.now().strftime('%Y%m%d%H%M%S')
         path = "versions/web_static_{}.tgz".format(date)
-        local("tar -czvf {} web_static".format(path))
+        local("tar -cvzf {} web_static".format(path))
+        if os.path.exists(path):
+            os.path.getsize(path)
         return path
     except Exception:
         return None
