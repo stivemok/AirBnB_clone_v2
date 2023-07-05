@@ -6,6 +6,8 @@ from datetime import datetime
 
 
 def do_pack():
+    """Return the archive path if correctly generated
+    Otherwise, return None"""
     try:
         local("mkdir -p versions")
         date = datetime.now().strftime('%Y%m%d%H%M%S')
