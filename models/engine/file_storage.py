@@ -10,6 +10,12 @@ from models.place import Place
 from models.review import Review
 
 
+classes = {
+    'BaseModel': BaseModel, 'User': User, 'Place': Place, 'State': State,
+    'City': City, 'Amenity': Amenity, 'Review': Review
+}
+
+
 class FileStorage:
     """This class serializes instances to a JSON file and
     deserializes JSON file to instances
@@ -27,40 +33,38 @@ class FileStorage:
         """
         if cls is None:
             return self.__objects
-        dictinary = {}
-        for key, value in self.__objects.items():
-            _class = value.__class__
-            _value = value.__class__.__name__
-            if cls == _class or cls == _value:
-                dictionary[key] = value
-        return dictionary
+        return {k: v for k, v in self.__objects.items()
+                if type(val) == cls}
 
     def new(self, obj):
         """sets __object to given obj
         Args:
             obj: given object
         """
-        if obj:
+        """if obj:
             key = "{}.{}".format(type(obj).__name__, obj.id)
-            self.__objects[key] = obj
+            self.__objects[key] = obj"""
+        self.all().update({obj.to_dict()['__cls__'] + '.' + obj.id: obj})
 
     def save(self):
         """serialize the file path to JSON file path
         """
-        my_dict = {}
-        for key, value in self.__objects.items():
-            my_dict[key] = value.to_dict()
-        with open(self.__file_path, 'w', encoding="UTF-8") as f:
+        with open(self.__file_path, 'w') as f:
+            my_dict = {}
+            my_dict.update(self.__objects)
+            for key, value in my_dict.items():
+                my_dict[key] = value.to_dict()
             json.dump(my_dict, f)
 
     def reload(self):
         """serialize the file path to JSON file path
         """
         try:
+            my_dict = {}
             with open(self.__file_path, 'r', encoding="UTF-8") as f:
-                for key, value in (json.load(f)).items():
-                    value = eval(value["__class__"])(**value)
-                    self.__objects[key] = value
+                my_dict = json.load(f)
+                for key, value in my_dict.items():
+                    self.all()[key] = classes[value['__class__']](**value)
         except FileNotFoundError:
             pass
 
@@ -71,3 +75,7 @@ class FileStorage:
             key = "{}.{}".format(type(obj).__name__, obj.id)
             if key in self.__objects:
                 del self.__objects[key]
+
+    def close(self):
+        """call reload() method for deserializing the JSON file to objects"""
+        self.reload()
