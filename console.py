@@ -2,7 +2,7 @@
 """ Console Module """
 import cmd
 import sys
-from shlex import split
+import re
 from models.base_model import BaseModel
 from models.__init__ import storage
 from models.user import User
@@ -11,6 +11,7 @@ from models.state import State
 from models.city import City
 from models.amenity import Amenity
 from models.review import Review
+from sqlalchemy import Column, String
 
 
 class HBNBCommand(cmd.Cmd):
@@ -116,53 +117,39 @@ class HBNBCommand(cmd.Cmd):
 
     def do_create(self, args):
         """ Create an object of any class"""
-        # splits arguments
-        args = args.split()
+        pattern = """(^\w+)((?:\s+\w+=[^\s]+)+)?"""
+        m = re.match(pattern, args)
+        args = [s for s in m.groups() if s] if m else []
 
         if not args:
             print("** class name missing **")
             return
-        # checks if class name\args[0] exists
-        if args[0] not in HBNBCommand.classes:
+
+        className = args[0]
+
+        if className not in HBNBCommand.classes:
             print("** class doesn't exist **")
             return
-        # stores the key value pairs from the args
+
         kwargs = dict()
-
         if len(args) > 1:
-            params = args[1:]
-            i = 0
-            while i < len(params):
-                name = params[i]
-                if '=' not in name:
-                    print("** invalid format for key-value pair **")
-                    return
-
-                name, value = name.split('=')
-                # checks "" and replaces _ with ' '
+            params = args[1].split(" ")
+            params = [param for param in params if param]
+            for param in params:
+                [name, value] = param.split("=")
                 if value[0] == '"' and value[-1] == '"':
                     value = value[1:-1].replace('_', ' ')
                 elif '.' in value:
-                    try:
-                        value = float(value)
-                    except ValueError:
-                        print("** invalid value format **")
-                        return
+                    value = float(value)
                 else:
-                    try:
-                        value = int(value)
-                    except ValueError:
-                        print("** invalid value format **")
-                        return
-                # name and value added to kwargs
+                    value = int(value)
                 kwargs[name] = value
-                i += 1
-        # creates new instance based on the class name\args[0]
-        new_instance = HBNBCommand.classes[args[0]]()
-        # assignes the attributes to the created instance
-        for attr_name, attr_value in kwargs.items():
-            setattr(new_instance, attr_name, attr_value)
-        # save the instance data and print
+
+        new_instance = HBNBCommand.classes[className]()
+        
+        for attrName, attrValue in kwargs.items():
+            setattr(new_instance, attrName, attrValue) 
+
         new_instance.save()
         print(new_instance.id)
 
@@ -246,7 +233,7 @@ class HBNBCommand(cmd.Cmd):
             if args not in HBNBCommand.classes:
                 print("** class doesn't exist **")
                 return
-            for k, v in storage._FileStorage__objects.items():
+            for k, v in storage.all().items():
                 if k.split('.')[0] == args:
                     print_list.append(str(v))
         else:
@@ -332,34 +319,30 @@ class HBNBCommand(cmd.Cmd):
 
             args = [att_name, att_val]
 
-        # retrieve dictionary of current objects
+        # retrieve dictionary of the current objects
         new_dict = storage.all()[key]
 
-        # iterate through attr names and values
         for i, att_name in enumerate(args):
-            # block only runs on even iterations
             if (i % 2 == 0):
-                att_val = args[i + 1]  # following item is value
-                if not att_name:  # check for att_name
+                att_val = args[i + 1]
+                if not att_name:
                     print("** attribute name missing **")
                     return
-                if not att_val:  # check for att_value
+                if not att_val:
                     print("** value missing **")
                     return
-                # type cast as necessary
                 if att_name in HBNBCommand.types:
                     att_val = HBNBCommand.types[att_name](att_val)
 
                 # update dictionary with name, value pair
                 new_dict.__dict__.update({att_name: att_val})
 
-        new_dict.save()  # save updates to file
+        new_dict.save()
 
     def help_update(self):
         """ Help information for the update class """
         print("Updates an object with new information")
         print("Usage: update <className> <id> <attName> <attVal>\n")
-
 
 if __name__ == "__main__":
     HBNBCommand().cmdloop()
